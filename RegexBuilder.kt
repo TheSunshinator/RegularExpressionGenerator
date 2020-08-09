@@ -1,249 +1,159 @@
-@file:Include("CharacterClassBuilder.kt")
-@file:Include("QuantifierType.kt")
+class RegexBuilder internal constructor(builder: RegexBuilder.() -> Unit) {
 
-class RegexBuilder(builder: RegexBuilder.() -> Unit) {
-
-    private var regex = ""
-    private val specialCharacters = arrayOf('\\', '\t', '\n', '\r', '.')
+    internal var regexConstruct: RegexConstruct = EmptyConstruct
 
     init {
         builder()
     }
 
-    fun character(char: Char) {
-        when (char) {
-            '\t' -> tab()
-            '\n' -> newLine()
-            '\r' -> carriageReturn()
-            '\\' -> regex += "\\\\"
-            '"' -> regex += "\\\""
-            '.',
-            '*',
-            '+',
-            '?',
-            '^',
-            '[',
-            ']',
-            '$',
-            '&',
-            '|' -> regex += char.escape()
-            else -> regex += char
+    operator fun RegexConstruct.unaryPlus() {
+        if (this !is EmptyConstruct) regexConstruct = when (val currentConstruct = regexConstruct) {
+            EmptyConstruct -> this
+            is QueueConstruct -> {
+                val constructToAdd = if (this is AlternationConstruct) Group(this) else this
+                currentConstruct.apply { add(constructToAdd) }
+            }
+            is AlternationConstruct -> {
+                val constructToAdd = if (this is AlternationConstruct) Group(this) else this
+                QueueConstruct(currentConstruct.groupIfNeeded(), constructToAdd)
+            }
+            else -> if (currentConstruct is RawConstruct && this is RawConstruct) currentConstruct.apply {
+                append(this@unaryPlus)
+            } else {
+                val constructToAdd = if (this is AlternationConstruct) Group(this) else this
+                val currentConstructGrouped = if (currentConstruct is AlternationConstruct) Group(currentConstruct) else currentConstruct
+                QueueConstruct(currentConstructGrouped, constructToAdd)
+            }
         }
     }
 
-    fun tab() {
-        regex += "\\t"
+    operator fun String.unaryPlus() = string(this)
+    operator fun Char.unaryPlus() = character(this)
+
+    fun string(s: String) = +RawConstruct(s)
+    fun character(char: Char) = string(char.toString())
+
+    fun tab() = character('\t')
+    fun newLine() = character('\n')
+    fun carriageReturn() = character('\r')
+
+    fun any() = +SpecialCharacter(SpecialCharacter.Value.ANY)
+    fun lineStart() = +SpecialCharacter(SpecialCharacter.Value.LINE_START)
+    fun lineEnd() = +SpecialCharacter(SpecialCharacter.Value.LINE_END)
+    fun stringStart() = +SpecialCharacter(SpecialCharacter.Value.STRING_START)
+    fun stringEnd() = +SpecialCharacter(SpecialCharacter.Value.STRING_END)
+    fun lastLineEnd() = +SpecialCharacter(SpecialCharacter.Value.LAST_LINE_END)
+    fun previousMatch() = +SpecialCharacter(SpecialCharacter.Value.PREVIOUS_MATCH)
+
+    fun digit(): Negatable = ShorthandCharacterClass(ShorthandCharacterClass.Value.DIGIT).also { +it }
+    fun whitespace(): Negatable = ShorthandCharacterClass(ShorthandCharacterClass.Value.WHITESPACE).also { +it }
+    fun word(): Negatable = ShorthandCharacterClass(ShorthandCharacterClass.Value.WORD).also { +it }
+    fun wordBoundary(): Negatable = ShorthandCharacterClass(ShorthandCharacterClass.Value.WORD_BOUNDARY).also { +it }
+
+    fun lowerCase() = +PosixCharacterClass(PosixCharacterClass.Value.LOWER_CASE)
+    fun upperCase() = +PosixCharacterClass(PosixCharacterClass.Value.UPPER_CASE)
+    fun ascii() = +PosixCharacterClass(PosixCharacterClass.Value.ASCII)
+    fun letter() = +PosixCharacterClass(PosixCharacterClass.Value.LETTER)
+    fun alphanumeric() = +PosixCharacterClass(PosixCharacterClass.Value.ALPHANUMERIC)
+    fun symbol() = +PosixCharacterClass(PosixCharacterClass.Value.SYMBOL)
+    fun graphical() = +PosixCharacterClass(PosixCharacterClass.Value.GRAPH)
+    fun printable() = +PosixCharacterClass(PosixCharacterClass.Value.PRINT)
+    fun blank() = +PosixCharacterClass(PosixCharacterClass.Value.BLANK)
+    fun control() = +PosixCharacterClass(PosixCharacterClass.Value.CONTROL)
+    fun hexadecimalDigit() = +PosixCharacterClass(PosixCharacterClass.Value.HEXADECIMAL)
+
+    fun capture(name: String? = null, builder: RegexBuilder.() -> Unit) = +CapturingGroup(
+            RegexBuilder(builder).regexConstruct,
+            name
+    )
+
+    fun referenceCapture(name: String) = +BackReferenceNameCapture(name)
+    fun referenceCapture(index: Int) = +BackReferenceIndexCapture(index)
+    fun referenceLastCapture(indexFromLast: Int) = +BackReferenceRelativeCapture(indexFromLast)
+
+    fun subRegex(builder: RegexBuilder.() -> Unit): RegexConstruct = RegexBuilder(builder).regexConstruct
+
+
+    fun ahead(builder: RegexBuilder.() -> Unit): Negatable {
+        return LookAround(LookAround.Direction.AHEAD, RegexBuilder(builder).regexConstruct).also { +it }
     }
 
-    fun newLine() {
-        regex += "\\n"
-    }
-
-    fun carriageReturn() {
-        regex += "\\r"
-    }
-
-    fun any() {
-        regex += '.'
-    }
-
-    fun digit() {
-        regex += "\\\\d"
-    }
-
-    fun nonDigit() {
-        regex += "\\\\D"
-    }
-
-    fun whitespace() {
-        regex += "\\\\s"
-    }
-
-    fun nonWhitespace() {
-        regex += "\\\\S"
-    }
-
-    fun word() { // [a-zA-Z_0-9]
-        regex += "\\\\w"
-    }
-
-    fun nonWord() {
-        regex += "\\\\W"
-    }
-
-    fun lowerCase() {
-        regex += "\\\\p{Lower}"
-    }
-
-    fun upperCase() {
-        regex += "\\\\p{Upper}"
-    }
-
-    fun ascii() {
-        regex += "\\\\p{ASCII}"
-    }
-
-    fun letter() {
-        regex += "\\\\p{Alpha}"
-    }
-
-    fun alphaNumeric() {
-        regex += "\\\\p{Alnum}"
-    }
-
-    fun symbol() {
-        regex += "\\\\p{Punct}"
-    }
-
-    fun letterOrNumberOrSymbol() {
-        regex += "\\\\p{Graph}"
-    }
-
-    fun letterOrNumberOrSymbolOrSpace() {
-        regex += "\\\\p{Print}"
-    }
-
-    fun blank() {
-        regex += "\\\\p{Blank}"
-    }
-
-    fun control() {
-        regex += "\\\\p{Cntrl}"
-    }
-
-    fun hexdecimalDigit() {
-        regex += "\\\\p{XDigit}"
-    }
-
-    fun lineStart() {
-        regex += '^'
-    }
-
-    fun lineEnd() {
-        regex += '$'
-    }
-
-    fun wordBoundary() {
-        regex += "\\\\b"
-    }
-
-    fun nonWordBoundary() {
-        regex += "\\\\B"
-    }
-
-    fun stringStart() {
-        regex += "\\\\A"
-    }
-
-    fun stringEnd() {
-        regex += "\\\\z"
-    }
-
-    fun lastLineEnd() {
-        regex += "\\\\Z"
-    }
-
-    fun previousMatch() {
-        regex += "\\\\G"
-    }
-
-    fun string(s: String) {
-        s.forEach(::character)
-    }
-
-    fun capture(name: String? = null, builder: RegexBuilder.() -> Unit) {
-        regex += if (name.isNullOrEmpty()) "(${RegexBuilder(builder)})" else "(?<$name>:${RegexBuilder(builder)})"
-    }
-
-    fun getCapture(index: Int) {
-        regex += "\\\\$index"
-    }
-
-    fun getCapture(name: String) {
-        regex += "\\\\k<$name>"
-    }
-
-    fun group(builder: RegexBuilder.() -> Unit) {
-        regex += RegexBuilder(builder).build().grouped()
-    }
-
-    private fun String.grouped() = "(?:$this)"
-
-    fun followedBy(builder: RegexBuilder.() -> Unit) {
-        regex += "(?=${RegexBuilder(builder).build()})"
-    }
-
-    fun notFollowedBy(builder: RegexBuilder.() -> Unit) {
-        regex += "(?!${RegexBuilder(builder).build()})"
-    }
-
-    fun precededBy(builder: RegexBuilder.() -> Unit) {
-        regex += "(?<=${RegexBuilder(builder).build()})"
-    }
-
-    fun notPrecededBy(builder: RegexBuilder.() -> Unit) {
-        regex += "(?<!${RegexBuilder(builder).build()})"
-    }
-
-    fun independentGroup(builder: RegexBuilder.() -> Unit) {
-        regex += "(?>${RegexBuilder(builder).build()})"
+    fun behind(builder: RegexBuilder.() -> Unit): Negatable {
+        return LookAround(LookAround.Direction.BEHIND, RegexBuilder(builder).regexConstruct).also { +it }
     }
 
     fun maybe(quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + '?' + quantifierType.operator
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.Optional)
     }
 
-    private fun String.isSingleCharacterSet() = length > 2 && first() == '[' && last() == ']' && count { it == '[' || it == ']' } == 2
-    private fun String.groupIfNeeded() = if (length < 2 || isSingleCharacterSet()) this else grouped()
+    private fun repeatConstructOrEmpty(
+            construct: RegexConstruct,
+            quantifierType: QuantifierType,
+            repetitionType: RepetitionType
+    ): RegexConstruct {
+        return if (construct === EmptyConstruct) EmptyConstruct
+        else RepetitionConstruct(
+                construct.groupIfNeeded(),
+                quantifierType,
+                repetitionType
+        )
+    }
+
+    private fun RegexConstruct.groupIfNeeded() = if (this is CompositionConstruct) Group(this) else this
 
     fun atLeastOnce(quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + '+' + quantifierType.operator
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.AtLeastOnce)
     }
 
     fun anyNumberOfTimes(quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + '*' + quantifierType.operator
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.Any)
     }
 
-    fun repeatedExactly(times: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + "{$times}" + quantifierType.operator
+    fun exactly(times: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.Exactly(times))
     }
 
-    fun repeatedAtLeast(times: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + "{$times,}" + quantifierType.operator
+    fun atLeast(times: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.AtLeast(times))
     }
 
-    fun repeatedBetween(minTimes: Int, maxTimes: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
-        require(maxTimes > minTimes)
-        val expression = RegexBuilder(builder).build().groupIfNeeded()
-        if (expression.isNotEmpty()) regex += expression + "{$minTimes,$maxTimes}" + quantifierType.operator
+    fun atMost(times: Int, quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.AtMost(times))
     }
 
-    fun characterClass(builder: CharacterClassBuilder.() -> Unit) {
-        val expression = CharacterClassBuilder(
-                positive = true,
-                bracketsMandatory = false,
-                builder = builder
-        ).build()
-        regex += expression
+    fun repeatedBetween(
+            minTimes: Int,
+            maxTimes: Int,
+            quantifierType: QuantifierType = QuantifierType.GREEDY,
+            builder: RegexBuilder.() -> Unit
+    ) {
+        require(minTimes < maxTimes)
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.Range(minTimes, maxTimes))
     }
 
-    fun notCharacterClass(builder: CharacterClassBuilder.() -> Unit) {
-        val expression = CharacterClassBuilder(
-                positive = false,
-                bracketsMandatory = true,
-                builder = builder
-        ).build()
-        regex += expression
+    fun repeatedBetween(
+            range: IntRange,
+            quantifierType: QuantifierType = QuantifierType.GREEDY,
+            builder: RegexBuilder.() -> Unit
+    ) {
+        +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.Range(range.first, range.last))
     }
 
-    fun build(): String = regex
+    fun firstMatch(builder: RegexBuilder.() -> Unit) = +FirstMatchGroup(RegexBuilder(builder).regexConstruct)
+
+    fun anySubRegexIn(alternatives: AlternationBuilder.() -> Unit) {
+        +AlternationBuilder(alternatives).build()
+    }
+
+    fun anyCharacterInSet(builder: CharacterClassBuilder.() -> Unit): Negatable {
+        return CharacterClass(CharacterClassBuilder(builder)).also { +it }
+    }
+
+    fun build(): String = regexConstruct.computeString()
 }
 
-fun Char.escape() = "\\$this"
-
-fun regex(builder: RegexBuilder.() -> Unit): String = RegexBuilder(builder).build()
+fun regex(builder: RegexBuilder.() -> Unit): Regex = RegexBuilder(builder)
+        .build()
+        .also { println("\"$it\"") }
+        .replace("\\\\", "\\")
+        .toRegex()

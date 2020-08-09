@@ -1,20 +1,11 @@
-#!/usr/bin/env kscript
-
-@file:Include("RegexBuilder.kt")
-
-/**
- * Run with `kscript generateRegex.kts`
- */
-val regularExpression = regex {
+regex {
     character('"')
     atLeastOnce(QuantifierType.LAZY) { any() }
-    characterClass {
+    anyCharacterInSet {
         character('c')
-        characterIn('j'..'m')
-        and {
+        allIn('j'..'m')
+        intersectWith {
             character('l')
         }
     }
 }
-
-println("\"$regularExpression\"")
