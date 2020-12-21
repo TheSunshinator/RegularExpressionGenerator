@@ -64,6 +64,10 @@ internal object EmptyConstruct : RegexConstruct() {
 }
 
 internal data class RawConstruct(private var value: String) : RegexConstruct() {
+
+    val isGroup: Boolean
+        get() = value.length > 1
+
     override fun computeString(): String {
         return value.replace(metaCharacterRegex) { if (it.value == "\\") "\\\\\\\\" else "\\\\${it.value}" }
     }
@@ -73,7 +77,7 @@ internal data class RawConstruct(private var value: String) : RegexConstruct() {
     }
 
     companion object {
-        private val metaCharacterRegex = "[\\\\^$.|?*+()]".toRegex()
+        private val metaCharacterRegex = "[\\\\^$.|?*+()\\[]".toRegex()
     }
 }
 
@@ -155,7 +159,7 @@ internal class LookAround(
 internal class Group(construct: RegexConstruct) : GroupingConstruct(construct) {
     override val groupPrefix = "?:"
     override fun computeString(): String {
-        return if (content is CompositionConstruct) super.computeString()
+        return if (content is CompositionConstruct || (content is RawConstruct && content.isGroup)) super.computeString()
         else content.computeString() // Unnecessary grouping
     }
 }

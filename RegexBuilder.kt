@@ -99,7 +99,9 @@ class RegexBuilder internal constructor(builder: RegexBuilder.() -> Unit) {
         )
     }
 
-    private fun RegexConstruct.groupIfNeeded() = if (this is CompositionConstruct) Group(this) else this
+    private fun RegexConstruct.groupIfNeeded(): RegexConstruct {
+        return if (this is CompositionConstruct || (this is RawConstruct && isGroup)) Group(this) else this
+    }
 
     fun atLeastOnce(quantifierType: QuantifierType = QuantifierType.GREEDY, builder: RegexBuilder.() -> Unit) {
         +repeatConstructOrEmpty(RegexBuilder(builder).regexConstruct, quantifierType, RepetitionType.AtLeastOnce)
@@ -156,4 +158,5 @@ fun regex(builder: RegexBuilder.() -> Unit): Regex = RegexBuilder(builder)
         .build()
         .also { println("\"$it\"") }
         .replace("\\\\", "\\")
+        .also { println("\"$it\"") }
         .toRegex()

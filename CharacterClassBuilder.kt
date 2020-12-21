@@ -35,17 +35,49 @@ class CharacterClassBuilder internal constructor(builder: CharacterClassBuilder.
     fun newLine() = character('\n')
     fun carriageReturn() = character('\r')
 
-    fun lowerCase(): Negatable = PosixClass(PosixClass.Value.LOWER_CASE).also { +it }
-    fun upperCase(): Negatable = PosixClass(PosixClass.Value.UPPER_CASE).also { +it }
-    fun ascii(): Negatable = PosixClass(PosixClass.Value.ASCII).also { +it }
-    fun letter(): Negatable = PosixClass(PosixClass.Value.LETTER).also { +it }
-    fun alphanumeric(): Negatable = PosixClass(PosixClass.Value.ALPHANUMERIC).also { +it }
-    fun symbol(): Negatable = PosixClass(PosixClass.Value.SYMBOL).also { +it }
-    fun graphical(): Negatable = PosixClass(PosixClass.Value.GRAPH).also { +it }
-    fun printable(): Negatable = PosixClass(PosixClass.Value.PRINT).also { +it }
-    fun blank(): Negatable = PosixClass(PosixClass.Value.BLANK).also { +it }
-    fun control(): Negatable = PosixClass(PosixClass.Value.CONTROL).also { +it }
-    fun hexadecimalDigit(): Negatable = PosixClass(PosixClass.Value.HEXADECIMAL).also { +it }
+    fun lowerCase() {
+        +PosixClass(PosixClass.Value.LOWER_CASE)
+    }
+
+    fun upperCase() {
+        +PosixClass(PosixClass.Value.UPPER_CASE)
+    }
+
+    fun ascii() {
+        +PosixClass(PosixClass.Value.ASCII)
+    }
+
+    fun letter() {
+        +PosixClass(PosixClass.Value.LETTER)
+    }
+
+    fun alphanumeric() {
+        +PosixClass(PosixClass.Value.ALPHANUMERIC)
+    }
+
+    fun symbol() {
+        +PosixClass(PosixClass.Value.SYMBOL)
+    }
+
+    fun graphical() {
+        +PosixClass(PosixClass.Value.GRAPH)
+    }
+
+    fun printable() {
+        +PosixClass(PosixClass.Value.PRINT)
+    }
+
+    fun blank() {
+        +PosixClass(PosixClass.Value.BLANK)
+    }
+
+    fun control() {
+        +PosixClass(PosixClass.Value.CONTROL)
+    }
+
+    fun hexadecimalDigit() {
+        +PosixClass(PosixClass.Value.HEXADECIMAL)
+    }
 
     fun exclude(builder: CharacterClassBuilder.() -> Unit) {
         +Subtraction(CharacterClassBuilder(builder).characterClassConstruct)

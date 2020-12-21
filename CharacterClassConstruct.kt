@@ -42,21 +42,21 @@ internal class CharacterRange(range: CharRange) : CharacterClassConstruct() {
     override fun computeString() = value
 }
 
-internal data class PosixClass(val value: Value) : NegatableCharacterClass() {
-    override fun computeString() = if (isPositive) value.expression else value.negated
+internal data class PosixClass(val value: Value) : CharacterClassConstruct() {
+    override fun computeString() = value.expression
 
-    enum class Value(val expression: String, val negated: String) {
-        ALPHANUMERIC("[:alnum:]", "[:^alnum:]"),
-        LETTER("[:alpha:]", "[:^alpha:]"),
-        ASCII("[:ascii:]", "[:^ascii:]"),
-        BLANK("[:blank:]", "[:^blank:]"),
-        CONTROL("[:cntrl:]", "[:^cntrl:]"),
-        GRAPH("[:graph:]", "[:^graph:]"),
-        LOWER_CASE("[:lower:]", "[:^lower:]"),
-        UPPER_CASE("[:upper:]", "[:^upper:]"),
-        PRINT("[:print:]", "[:^print:]"),
-        SYMBOL("[:punct:]", "[:^punct:]"),
-        HEXADECIMAL("[:xdigit:]", "[:^xdigit:]"),
+    enum class Value(val expression: String) {
+        LOWER_CASE("\\\\p{Lower}"),
+        UPPER_CASE("\\\\p{Upper}"),
+        ASCII("\\\\p{ASCII}"),
+        LETTER("\\\\p{Alpha}"),
+        ALPHANUMERIC("\\\\p{Alnum}"),
+        SYMBOL("\\\\p{Punct}"),
+        GRAPH("\\\\p{Graph}"),
+        PRINT("\\\\p{Print}"),
+        BLANK("\\\\p{Blank}"),
+        CONTROL("\\\\p{Cntrl}"),
+        HEXADECIMAL("\\\\p{XDigit}"),
     }
 }
 
