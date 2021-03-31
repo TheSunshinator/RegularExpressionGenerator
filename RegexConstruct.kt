@@ -77,7 +77,7 @@ internal data class RawConstruct(private var value: String) : RegexConstruct() {
     }
 
     companion object {
-        private val metaCharacterRegex = "[\\\\^$.|?*+()\\[]".toRegex()
+        private val metaCharacterRegex = "[\\\\^$.|?*+(){\\[]".toRegex()
     }
 }
 

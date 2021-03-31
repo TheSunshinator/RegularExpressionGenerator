@@ -94,9 +94,9 @@ class CharacterClassBuilder internal constructor(builder: CharacterClassBuilder.
                 println("`${characterClassConstruct.computeString()}` is not a valid character class")
                 ""
             }
-            characterClassConstruct is RawCharacters && !characterClassConstruct.isUseful -> RegexBuilder {
-                string(characterClassConstruct.value)
-            }.build()
+            characterClassConstruct is RawCharacters
+                && !characterClassConstruct.isUseful
+                && isPositive -> RegexBuilder { string(characterClassConstruct.value) }.build()
             isPositive -> "[${characterClassConstruct.computeString()}]"
             else -> "[^${characterClassConstruct.computeString()}]"
         }
