@@ -1,6 +1,6 @@
-class RegexBuilder internal constructor(builder: RegexBuilder.() -> Unit) {
+class RegexBuilder constructor(builder: RegexBuilder.() -> Unit) {
 
-    internal var regexConstruct: RegexConstruct = EmptyConstruct
+    var regexConstruct: RegexConstruct = EmptyConstruct
 
     init {
         builder()
@@ -34,7 +34,7 @@ class RegexBuilder internal constructor(builder: RegexBuilder.() -> Unit) {
     fun character(char: Char) = string(char.toString())
 
     fun tab() = character('\t')
-    fun newLine() = character('\n')
+    fun newLine() = string("\\n")
     fun carriageReturn() = character('\r')
 
     fun any() = +SpecialCharacter(SpecialCharacter.Value.ANY)
@@ -151,7 +151,7 @@ class RegexBuilder internal constructor(builder: RegexBuilder.() -> Unit) {
         return CharacterClass(CharacterClassBuilder(builder)).also { +it }
     }
 
-    fun build(): String = regexConstruct.computeString()
+    fun build(): String = regexConstruct.regexRepresentation
 }
 
 fun regex(builder: RegexBuilder.() -> Unit): Regex = RegexBuilder(builder)

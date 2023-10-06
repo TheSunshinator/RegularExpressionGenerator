@@ -1,11 +1,11 @@
 sealed class RegexConstruct {
-    abstract fun computeString(): String
+    abstract val regexRepresentation: String
 }
 
 internal sealed class GroupingConstruct(protected val content: RegexConstruct) : RegexConstruct() {
     protected abstract val groupPrefix: String
 
-    override fun computeString() = "($groupPrefix${content.computeString()})"
+    override val regexRepresentation: String by lazy { "($groupPrefix${content.regexRepresentation})" }
     override fun toString() = "${this::class.simpleName}($content)"
 }
 
@@ -14,27 +14,24 @@ internal data class RepetitionConstruct(
         private val quantifierType: QuantifierType,
         private val repetitionType: RepetitionType
 ) : RegexConstruct() {
-    override fun computeString() = "${construct.computeString()}${repetitionType.postfix}${quantifierType.operator}"
+    override val regexRepresentation: String by lazy {
+        "${construct.regexRepresentation}${repetitionType.postfix}${quantifierType.operator}"
+    }
 }
 
-internal sealed class CompositionConstruct : RegexConstruct {
+internal sealed class CompositionConstruct(composition: List<RegexConstruct>) : RegexConstruct() {
 
-    protected val composition: MutableList<RegexConstruct>
-
-    constructor(first: RegexConstruct, second: RegexConstruct) : super() {
-        composition = mutableListOf(first, second)
+    init {
+        require(composition.size > 1)
     }
 
-    constructor(constructs: List<RegexConstruct>) {
-        require(constructs.size > 1)
-        composition = constructs.toMutableList()
-    }
+    constructor(first: RegexConstruct, second: RegexConstruct) : this(listOf(first, second))
 
+    protected val composition = composition.toMutableList()
     abstract val separator: String
 
-    final override fun computeString(): String {
-        return composition.joinToString(separator = separator) { it.computeString() }
-    }
+    final override val regexRepresentation: String
+        get() = composition.joinToString(separator = separator) { it.regexRepresentation }
 
     override fun toString(): String {
         return "${this::class.simpleName}(${composition.joinToString(separator = separator) { it.toString() }})"
@@ -59,7 +56,7 @@ internal class AlternationConstruct : CompositionConstruct {
 }
 
 internal object EmptyConstruct : RegexConstruct() {
-    override fun computeString() = ""
+    override val regexRepresentation: String = ""
     override fun toString() = "EmptyConstruct"
 }
 
@@ -68,9 +65,8 @@ internal data class RawConstruct(private var value: String) : RegexConstruct() {
     val isGroup: Boolean
         get() = value.length > 1
 
-    override fun computeString(): String {
-        return value.replace(metaCharacterRegex) { if (it.value == "\\") "\\\\\\\\" else "\\\\${it.value}" }
-    }
+    override val regexRepresentation: String
+        get() = value.replace(metaCharacterRegex) { if (it.value == "\\") "\\\\\\\\" else "\\\\${it.value}" }
 
     fun append(construct: RawConstruct) {
         value += construct.value
@@ -82,7 +78,7 @@ internal data class RawConstruct(private var value: String) : RegexConstruct() {
 }
 
 internal data class SpecialCharacter(val value: Value) : RegexConstruct() {
-    override fun computeString() = value.expression
+    override val regexRepresentation: String = value.expression
 
     enum class Value(val expression: String) {
         LINE_START("^"),
@@ -96,7 +92,7 @@ internal data class SpecialCharacter(val value: Value) : RegexConstruct() {
 }
 
 internal data class ShorthandCharacterClass(private val value: Value) : RegexConstruct(), Negatable by NegatableDelegate() {
-    override fun computeString() = if (isPositive) value.expression else value.negation
+    override val regexRepresentation: String = if (isPositive) value.expression else value.negation
 
     enum class Value(val expression: String, val negation: String) {
         DIGIT("\\\\d", "\\\\D"),
@@ -107,7 +103,7 @@ internal data class ShorthandCharacterClass(private val value: Value) : RegexCon
 }
 
 internal data class PosixCharacterClass(val value: Value) : RegexConstruct() {
-    override fun computeString() = value.expression
+    override val regexRepresentation: String = value.expression
 
     enum class Value(val expression: String) {
         LOWER_CASE("\\\\p{Lower}"),
@@ -129,15 +125,15 @@ internal class CapturingGroup(construct: RegexConstruct, name: String? = null) :
 }
 
 internal data class BackReferenceIndexCapture(private val index: Int) : RegexConstruct() {
-    override fun computeString() = "\\\\k<$index>"
+    override val regexRepresentation: String = "\\\\$index"
 }
 
 internal data class BackReferenceRelativeCapture(private val indexDifference: Int) : RegexConstruct() {
-    override fun computeString() = "\\\\k<$indexDifference>"
+    override val regexRepresentation: String = "\\\\k<$indexDifference>"
 }
 
 internal data class BackReferenceNameCapture(private val name: String) : RegexConstruct() {
-    override fun computeString() = "\\\\k<$name>"
+    override val regexRepresentation: String = "\\\\k<$name>"
 }
 
 internal class LookAround(
@@ -158,9 +154,10 @@ internal class LookAround(
 
 internal class Group(construct: RegexConstruct) : GroupingConstruct(construct) {
     override val groupPrefix = "?:"
-    override fun computeString(): String {
-        return if (content is CompositionConstruct || (content is RawConstruct && content.isGroup)) super.computeString()
-        else content.computeString() // Unnecessary grouping
+
+    override val regexRepresentation: String by lazy {
+        if (content is CompositionConstruct || (content is RawConstruct && content.isGroup)) super.regexRepresentation
+        else content.regexRepresentation // Unnecessary grouping
     }
 }
 
@@ -169,5 +166,5 @@ internal class FirstMatchGroup(construct: RegexConstruct) : GroupingConstruct(co
 }
 
 internal data class CharacterClass(private val characterClass: CharacterClassBuilder) : RegexConstruct(), Negatable by NegatableDelegate() {
-    override fun computeString() = characterClass.build(isPositive)
+    override val regexRepresentation: String by lazy { characterClass.build(isPositive) }
 }

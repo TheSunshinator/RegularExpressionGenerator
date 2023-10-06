@@ -22,7 +22,7 @@ internal sealed class RepetitionType {
     }
 
     class AtMost(times: Int) : RepetitionType() {
-        override val postfix = "{,$times}"
+        override val postfix = "{0,$times}"
     }
 
     class Range(minTimes: Int, maxTimes: Int) : RepetitionType() {

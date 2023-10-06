@@ -31,9 +31,9 @@ class CharacterClassBuilder internal constructor(builder: CharacterClassBuilder.
     fun allIn(s: String) = +RawCharacters(s)
     fun allIn(range: CharRange) = +CharacterRange(range)
 
-    fun tab() = character('\t')
-    fun newLine() = character('\n')
-    fun carriageReturn() = character('\r')
+    fun tab() = +"\\t"
+    fun newLine() = +"\\n"
+    fun carriageReturn() = +"\\r"
 
     fun lowerCase() {
         +PosixClass(PosixClass.Value.LOWER_CASE)

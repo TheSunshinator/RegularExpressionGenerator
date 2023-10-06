@@ -17,7 +17,7 @@ internal data class RawCharacters(internal var value: String) : CharacterClassCo
     }
 
     companion object {
-        private val metaCharacterRegex = "(?<!\\A)-(?!\\z)|(?<!\\A)]|(?<=\\A)\\^|\\\\".toRegex()
+        private val metaCharacterRegex = "(?<!\\A)-(?!\\z)|(?<!\\A)]|(?<=\\A)\\^|\\\\|\\[".toRegex()
     }
 }
 
